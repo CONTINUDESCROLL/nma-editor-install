@@ -10,8 +10,9 @@
 #  Même socle que Derush Studio et NMA Auditor (Node, ffmpeg, environnement
 #  Python, modèle Whisper) : si l'un d'eux est déjà installé, ces étapes sont
 #  instantanées. En plus : Node complet (npx, pour HyperFrames), le navigateur
-#  de rendu de HyperFrames, et Claude Code (chaque salarié se connecte avec
-#  son propre abonnement).
+#  de rendu de HyperFrames, Claude Code (chaque salarié se connecte avec
+#  son propre abonnement), et le détourage RVM (PyTorch + RobustVideoMatting,
+#  en local, gratuit : la règle de Tom pour tout détourage).
 # =============================================================================
 set -u
 export GIT_TERMINAL_PROMPT=0
@@ -23,7 +24,8 @@ NODE_DIR="$HOME/.local/opt/node22"
 VENV="$HOME/.local/opt/whisper-env"
 NODE_V="v22.23.1"
 MARQUEUR="$HOME/.nma-editor/emplacement"
-ETAPES=8
+ETAPES=9
+RVM_DIR="$HOME/.rvm-tool"
 
 JETON=""; export JETON
 armer_git() { JETON="$1"; ASKPASS=$(mktemp); chmod 700 "$ASKPASS"
@@ -71,6 +73,8 @@ verifier() {
   if C=$(trouver_claude); then vert "Claude Code ($("$C" --version 2>/dev/null | head -1))"; else souci "Claude Code absent"; fi
   if claude_connecte; then vert "Claude Code connecté à un compte"; else souci "Claude Code pas encore connecté : ouvre le Terminal, tape « claude » et connecte-toi"; fi
   [ -n "$(ls -d "$HOME/.cache/hyperframes/chrome"/* 2>/dev/null)" ] && vert "navigateur de rendu HyperFrames" || souci "navigateur de rendu HyperFrames absent"
+  if /usr/bin/python3 -E -c 'import torch, torchvision, numpy' >/dev/null 2>&1; then vert "PyTorch (détourage)"; else souci "PyTorch absent : le détourage RVM ne marchera pas"; fi
+  [ -f "$RVM_DIR/repo/model/__init__.py" ] && [ "$(wc -c < "$RVM_DIR/weights/rvm_resnet50.pth" 2>/dev/null || echo 0)" -gt 100000000 ] && vert "détourage RVM" || souci "détourage RVM absent"
   [ -f "$A/server.mjs" ] && [ -f "$A/public/index.html" ] && [ -d "$A/skills" ] && vert "fichiers de l'application" || souci "fichiers de l'application manquants"
   [ -d "$A/.git" ] && vert "mises à jour possibles depuis l'application" || souci "pas de dépôt git : les mises à jour en un clic ne marcheront pas"
   [ -s "$A/Lancer NMA Editor.command" ] && vert "lanceur" || souci "lanceur absent"
@@ -301,6 +305,31 @@ gris "préparation de HyperFrames $HF_V…"
 gris "navigateur de rendu… (~150 Mo la première fois)"
 ( cd "$HOME" && npx --yes "hyperframes@$HF_V" browser ensure >/dev/null 2>&1 ) && vert "navigateur de rendu prêt" || gris "échec — il se téléchargera au premier rendu"
 gris "les designs s'installent au premier lancement de l'application"
+
+# ----------------------------------------------------------------------------- 9. détourage
+# RobustVideoMatting, sur la puce du Mac : 2 332 images en 1080x1920 en 118 s sur un M4 Pro, sans garder le décor
+# derrière la tête comme l'outil de HyperFrames. PyTorch va dans le Python de macOS (celui que lancent les agents).
+etape 9 "Détourage des vidéos (RVM, en local)"
+if /usr/bin/python3 -E -c 'import torch, torchvision, numpy' >/dev/null 2>&1; then gris "PyTorch déjà présent"; else
+  gris "installation de PyTorch… (environ 1 Go, 3 à 10 minutes la première fois)"
+  /usr/bin/python3 -m pip install --user --quiet "torch==2.8.0" "torchvision==0.23.0" "numpy==2.0.2" \
+    || fatal "Installation de PyTorch échouée." "Vérifie ta connexion et relance."
+  /usr/bin/python3 -E -c 'import torch, torchvision' >/dev/null 2>&1 || fatal "PyTorch est installé mais Python ne le trouve pas."
+fi
+vert "PyTorch prêt"
+mkdir -p "$RVM_DIR/weights"
+if [ -f "$RVM_DIR/repo/model/__init__.py" ]; then gris "code de RVM déjà présent"; else
+  rm -rf "$RVM_DIR/repo"
+  git clone --quiet --depth 1 https://github.com/PeterL1n/RobustVideoMatting.git "$RVM_DIR/repo" || fatal "Téléchargement de RVM impossible." "Vérifie ta connexion et relance."
+fi
+POIDS="$RVM_DIR/weights/rvm_resnet50.pth"
+if [ "$(wc -c < "$POIDS" 2>/dev/null || echo 0)" -gt 100000000 ]; then gris "modèle de détourage déjà téléchargé"; else
+  gris "téléchargement du modèle de détourage… (108 Mo)"
+  telecharger https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_resnet50.pth "$POIDS" \
+    || fatal "Téléchargement du modèle de détourage impossible." "Vérifie ta connexion et relance."
+fi
+cp "$APP/outils/detourer.py" "$RVM_DIR/detourer.py" 2>/dev/null
+vert "détourage RVM prêt"
 
 # ----------------------------------------------------------------------------- terminé
 echo ""; printf "\033[1m  VÉRIFICATION FINALE\033[0m\n"; verifier "$APP"; echo ""
