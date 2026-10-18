@@ -7,7 +7,7 @@
 #  Reprend là où ça s'est arrêté si on le relance. « install.sh --verifier »
 #  vérifie une installation sans rien modifier.
 #
-#  Même socle que Derush Studio et NMA Auditor (Node, ffmpeg, environnement
+#  Même socle que NMA Extractor (ex-Derush Studio) et NMA Auditor (Node, ffmpeg, environnement
 #  Python, modèle Whisper) : si l'un d'eux est déjà installé, ces étapes sont
 #  instantanées. En plus : Node complet (npx, pour HyperFrames), le navigateur
 #  de rendu de HyperFrames, Claude Code (chaque salarié se connecte avec
@@ -99,7 +99,7 @@ cat <<'BAN'
   ╰──────────────────────────────────────────────╯
 
   Cette fenêtre affiche chaque étape.
-  Compte 5 à 10 minutes si Derush Studio est déjà installé,
+  Compte 5 à 10 minutes si NMA Extractor (ex-Derush Studio) est déjà installé,
   20 à 30 minutes sinon (le modèle de transcription fait 1,4 Go).
 
   À SAVOIR :
