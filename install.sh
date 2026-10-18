@@ -71,7 +71,7 @@ verifier() {
   for f in "$HOME/.cache/huggingface/hub/models--Systran--faster-whisper-medium"/snapshots/*/model.bin; do [ -f "$f" ] && M=$(wc -c < "$f" 2>/dev/null || echo 0); done
   if [ "$M" -gt 1000000000 ]; then vert "modèle de transcription"; else souci "modèle de transcription incomplet"; fi
   if C=$(trouver_claude); then vert "Claude Code ($("$C" --version 2>/dev/null | head -1))"; else souci "Claude Code absent"; fi
-  if claude_connecte; then vert "Claude Code connecté à un compte"; else souci "Claude Code pas encore connecté : ouvre le Terminal, tape « claude » et connecte-toi"; fi
+  if claude_connecte; then vert "Claude Code connecté à un compte"; else souci "Claude Code pas encore connecté : dans NMA Editor, engrenage ▸ « Connecter Claude… »"; fi
   [ -n "$(ls -d "$HOME/.cache/hyperframes/chrome"/* 2>/dev/null)" ] && vert "navigateur de rendu HyperFrames" || souci "navigateur de rendu HyperFrames absent"
   if /usr/bin/python3 -E -c 'import torch, torchvision, numpy' >/dev/null 2>&1; then vert "PyTorch (détourage)"; else souci "PyTorch absent : le détourage RVM ne marchera pas"; fi
   [ -f "$RVM_DIR/repo/model/__init__.py" ] && [ "$(wc -c < "$RVM_DIR/weights/rvm_resnet50.pth" 2>/dev/null || echo 0)" -gt 100000000 ] && vert "détourage RVM" || souci "détourage RVM absent"
@@ -261,8 +261,8 @@ if C=$(trouver_claude); then gris "Claude Code déjà présent ($("$C" --version
 fi
 if claude_connecte; then vert "Claude Code est connecté à un compte"; else
   rouge "  ⚠ Claude Code n'est pas encore connecté à ton compte."
-  echo "    À la fin de l'installation : ouvre le Terminal, tape  claude  puis Entrée,"
-  echo "    et connecte-toi avec ton compte Claude (abonnement Max conseillé)."
+  echo "    À la fin de l'installation : ouvre NMA Editor, clique sur l'engrenage,"
+  echo "    puis « Connecter Claude… » (abonnement Max conseillé)."
 fi
 
 # ----------------------------------------------------------------------------- 7. l'application
