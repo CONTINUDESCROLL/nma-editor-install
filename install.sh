@@ -300,7 +300,7 @@ etape 8 "HyperFrames (le moteur de montage et de rendu)"
 HF_V=$(grep -o 'hyperframes@[0-9.]*' "$APP/gabarit/package.json" 2>/dev/null | head -1 | cut -d@ -f2)
 [ -n "$HF_V" ] || HF_V="latest"
 export PATH="$NODE_DIR/bin:$BIN:$PATH"
-gris "préparation de HyperFrames $HF_V…"
+gris "préparation de HyperFrames ${HF_V}…"
 ( cd "$HOME" && npx --yes "hyperframes@$HF_V" --version >/dev/null 2>&1 ) && vert "HyperFrames prêt" || gris "HyperFrames se préparera au premier montage"
 gris "navigateur de rendu… (~150 Mo la première fois)"
 ( cd "$HOME" && npx --yes "hyperframes@$HF_V" browser ensure >/dev/null 2>&1 ) && vert "navigateur de rendu prêt" || gris "échec — il se téléchargera au premier rendu"
