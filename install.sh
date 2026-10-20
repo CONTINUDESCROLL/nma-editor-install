@@ -14,6 +14,10 @@
 #  son propre abonnement), et le détourage RVM (PyTorch + RobustVideoMatting,
 #  en local, gratuit : la règle de Tom pour tout détourage).
 # =============================================================================
+# Tout le script est entre accolades. Lancé par « curl … | bash », il arrive par l'entrée de Bash ; un programme qui lit
+# cette entrée (le premier téléchargement du navigateur de rendu, par exemple) avalait la suite, et l'installation
+# s'arrêtait sans message. Bash le lit maintenant en entier avant de commencer.
+{
 set -u
 export GIT_TERMINAL_PROMPT=0
 export GIT_ASKPASS=/usr/bin/true
@@ -342,3 +346,4 @@ echo ""
 if curl -s http://localhost:4320/api/etat >/dev/null 2>&1; then lsof -ti tcp:4320 2>/dev/null | xargs kill 2>/dev/null; sleep 2; gris "application redémarrée avec la nouvelle version"; fi
 bash "$APP/Lancer NMA Editor.command" >/dev/null 2>&1 &
 exit 0
+}
