@@ -284,18 +284,34 @@ else
 fi
 cat > "$APP/Lancer NMA Editor.command" <<'LANCEUR'
 #!/bin/bash
+# Lance NMA Editor : le serveur local s'il ne tourne pas, puis la page. Le raccourci du Bureau ne montre rien d'autre :
+# si ça ne démarre pas, une fenêtre dit pourquoi (au lieu d'un échec silencieux).
 CIBLE="$0"; while [ -L "$CIBLE" ]; do CIBLE="$(readlink "$CIBLE")"; done
-cd "$(dirname "$CIBLE")" || exit 1
+DOSSIER="$(dirname "$CIBLE")"
+alerte() { /usr/bin/osascript -e 'on run argv' -e 'display alert "NMA Editor ne démarre pas" message (item 1 of argv)' -e 'end run' "$1" >/dev/null 2>&1; echo "$1"; }
+cd "$DOSSIER" 2>/dev/null && [ -f server.mjs ] || { alerte "Impossible d'ouvrir le dossier de l'application : $DOSSIER. Si macOS a demandé l'accès à ce dossier, accepte-le (Réglages Système, Confidentialité et sécurité, Fichiers et dossiers), puis relance NMA Editor."; exit 1; }
 export PATH="$HOME/.local/opt/node22/bin:$HOME/.local/bin:$HOME/.claude/local:/opt/homebrew/bin:/usr/local/bin:$PATH"
-if curl -s http://localhost:4320/api/etat >/dev/null 2>&1; then echo "NMA Editor tourne déjà."; else mkdir -p "$HOME/.nma-editor"; node server.mjs > "$HOME/.nma-editor/serveur.log" 2>&1 & sleep 2; fi
-open http://localhost:4320
-echo "NMA Editor est ouvert dans le navigateur. Tu peux fermer cette fenêtre."
+NODE="$HOME/.local/opt/node22/bin/node"; [ -x "$NODE" ] || NODE="$(command -v node)"
+[ -n "$NODE" ] && [ -x "$NODE" ] || { alerte "Node est introuvable sur ce Mac : relance la commande d'installation de NMA Editor."; exit 1; }
+JOURNAL="$HOME/.nma-editor/serveur.log"; mkdir -p "$HOME/.nma-editor"
+repond() { curl -s -m 2 http://localhost:4320/api/etat >/dev/null 2>&1; }
+if ! repond; then
+  "$NODE" server.mjs > "$JOURNAL" 2>&1 &
+  for i in $(seq 1 60); do repond && break; sleep 0.5; done   # jusqu'à 30 s : le premier démarrage installe les designs
+fi
+if repond; then open http://localhost:4320; echo "NMA Editor est ouvert dans le navigateur. Tu peux fermer cette fenêtre."
+else alerte "Le serveur de NMA Editor ne répond pas. Ce qu'il dit ($JOURNAL) :
+$( (grep -iE "error|erreur|!!" "$JOURNAL" | head -3; tail -3 "$JOURNAL") 2>/dev/null | awk '!vu[$0]++')"; exit 1; fi
 LANCEUR
 chmod +x "$APP/Lancer NMA Editor.command" 2>/dev/null
 raccourci_vers() { [ -d "$1" ] || return 1
+  # une vraie application (double-clic sans fenêtre Terminal) ; à défaut, un .command
   local S; S=$(mktemp); printf 'do shell script "/bin/bash " & quoted form of "%s/Lancer NMA Editor.command" & " >/dev/null 2>&1 &"\n' "$APP" > "$S"
   rm -rf "$1/NMA Editor.app" "$1/NMA Editor.command" 2>/dev/null
-  if osacompile -o "$1/NMA Editor.app" "$S" >/dev/null 2>&1; then rm -f "$S"; return 0; fi; rm -f "$S"
+  if osacompile -o "$1/NMA Editor.app" "$S" >/dev/null 2>&1; then rm -f "$S"
+    # le logo de NMA Editor sur le raccourci (re-signé localement, sinon macOS refuse de l'ouvrir)
+    if [ -f "$APP/public/icone/NMA-Editor.icns" ]; then cp "$APP/public/icone/NMA-Editor.icns" "$1/NMA Editor.app/Contents/Resources/applet.icns" 2>/dev/null && codesign --force --sign - "$1/NMA Editor.app" >/dev/null 2>&1; touch "$1/NMA Editor.app"; fi
+    return 0; fi; rm -f "$S"
   { printf '#!/bin/bash\nexec /bin/bash "%s/Lancer NMA Editor.command"\n' "$APP" > "$1/NMA Editor.command"; } 2>/dev/null || return 1; chmod +x "$1/NMA Editor.command" 2>/dev/null; }
 if raccourci_vers "$HOME/Desktop"; then vert "raccourci créé sur le Bureau"; elif mkdir -p "$HOME/Applications" 2>/dev/null && raccourci_vers "$HOME/Applications"; then vert "raccourci créé dans ton dossier Applications"; else gris "raccourci impossible — le lanceur reste dans le dossier de l'application"; fi
 
